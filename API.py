@@ -145,3 +145,83 @@ class Cargo(db.Model):
 
     def __init__(self):
         pass
+
+
+
+# Rotas
+@app.route('/usuarios', methods=['GET'])
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return jsonify(
+        [{
+            'id':usuario.id,
+            'nome':usuario.nome,
+            'permissão_moderador':usuario.permissao_moderador,
+            'associação_criticos':usuario.id_associacao_criticos
+        }for usuario in usuarios]
+    )
+
+@app.rout('/usuarios', methods=['POST'])
+def cadastrar_usuario():
+    user = Usuario(request.json['nome', request.json['senha'], request.json['permissao_moderador'], request.json['id_associacao_criticos']])
+    db.session.add(user)
+    db.session.commit()
+    return jsonify(
+        [{
+            'id':user.id,
+            'nome':user.nome,
+            'permissão_moderador':user.permissao_moderador,
+            'associação_criticos':user.id_associacao_criticos
+        }]
+    )
+
+
+@app.route('/usuarios/<int:usuario_id>', methods=['GET'])
+def buscar_usuario(usuario_id):
+    user = Usuario.query.get(usuario_id)
+    if user:
+        return jsonify(
+            [{
+                'id':user.id,
+                'nome':user.nome,
+                'permissão_moderador':user.permissao_moderador,
+                'associação_criticos':user.id_associacao_criticos
+            }]
+        )
+    else:
+        return jsonify({'mensagem':'Usuario não encontrado.'}), 404
+
+
+@app.route('/usuarios/<int:usuario_id>', methods=['PUT'])
+def atualizar_usuario(usuario_id):
+    user = Usuario.query.get(usuario_id)
+    if user:
+        user.nome = request.json.get('nome', user.nome)
+        db.session.commit()
+        return jsonify(
+            [{
+                'id':user.id,
+                'nome':user.nome,
+                'permissão_moderador':user.permissao_moderador,
+                'associação_criticos':user.id_associacao_criticos
+            }]
+        )
+    else:
+        return jsonify({'mensagem':'Usuario não encontrado.'}), 404
+
+
+@app.route('usuarios/<int:usuario_id_mod>/<int:usuario_id>', methods=['DELETE'])
+def excluir_usuario(usuario_id_mod, usuario_id):
+    user_mod = Usuario.query.get(usuario_id_mod)
+    if user_mod.permissao_moderador == True:
+        user = Usuario.query.get(usuario_id)
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            return '', 204
+        else:
+            return jsonify({'mensagem':'Usuario não encontrado.'}), 404
+    elif user_mod.permissao_moderador == False:
+        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+    else:
+        return jsonify({'mensagem': 'Usuário não encontrado'}), 404
