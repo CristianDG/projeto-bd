@@ -1,138 +1,147 @@
-from typing import Any
-from sqlalchemy import create_engine, Column, Integer, String
-
-from sqlalchemy.orm import sessionmaker
-
-from sqlalchemy.ext.declarative import declarative_base
-
 from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Date
+from sqlalchemy_utils import JSONType
 
 
-url_banco = ""
-engine = create_engine(url_banco)
-Session = sessionmaker(bind=engine)
-Base = declarative_base()
 
-# Pesquisar como se faz a referência de chave estrangeira com orm
-
-# Criar Classes para todas as entidades.
-
-class Usuario(Base):
-    id = Column(String, primary_key="True")
-    nome = Column(String)
-    senha = Column(String)
-    # permissao_moderador = Column() Booleano]
-    # id_associacao_criticos = Column(Integer)
-
-    def __init__(self, nome, senha, permissao, id_associacao):
-        self.nome = nome
-        self.senha = senha
-        self.permissao_moderador = permissao
-        self.id_associacao_criticos = id_associacao
-
-
-class Associacao_Criticos(Base):
-    id = Column(Integer, primary_key="True")
-    nome = Column(String)
-
-    def __init__(self):
-        print("to do")
-
-
-class Critica(Base):
-    id = Column(Integer, primary_key="True")
-    conteudo = Column(String)
-    # nota = Column(Float)
-    # data = Column(date)
-    # id_usuario = Column(String)
-
-    def __init__(self):
-        print("to do")
-    
-
-class Criticas_Obras(Base):
-    id_obra = Column(Integer)
-    id_critica = Column(Integer)
-
-    def __init__(self):
-        print("to do")
-
-class Obra(Base):
-    id = Column(Integer, primary_key="True")
-    nome = Column(String)
-    id_produtora = Column(Integer)
-    genero = Column(String)
-    sinopse = Column(String)
-    # data_estreia = Column(date)
-    # relacionados = Columnn(json)
-
-    def __init__(self):
-        print("to do")
-
-
-class Genero(Base):
-    id = Column(String, primary_key="True")
-
-    def __init__(self):
-        print("to do")
-
-
-class Filme(Base):
-    id = Column(Integer)
-    bilheteria = Column(Integer)
-
-    def __init__(self):
-        print("to do")
-    
-
-class Serie(Base):
-    id = Column(Integer, primary_key="True")
-    # data_fim = Column(date)
-    episodios = Column(Integer)
-
-
-    def __init__(self):
-        print("to do")
-
-class Produtora(Base):
-    id = Column(Integer, primary_key="True")
-    nome = Column(String)
-
-    def __init__(self):
-        print("to do")
-
-class Premio(Base):
-    id = Column(Integer, primary_key="True")
-    nome = Column(String)
-    categoria = Column(String)
-    # data = Column(date)
-
-
-    def __init__(self):
-        print("to do")
-
-
-class Staff(Base):
-    id = Column(Integer, primary_key="True")
-    nome_artístico = Column(String)
-    nome = Column(String)
-    # data_nascimento = Columnd(Date)
-
-    # foto = Column()
-
-    local_nascimento = Column(String)
-    # maior_nota_recebida = Column(Float)
-    # menor_nota_recebida = Column(FLoat)
-
-    def __init__(self):
-        print("to do")
-    
-
-class Cargo(Base):
-    id = Column(String, primary_key="True")
-
-    def __init__(self):
-        print("to do")
 
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATAdb.Model_URI'] = "postgresql://postgres:teste123@projetobd-aws-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+
+# Criar Classes para todas as entidades.
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String())
+    senha = db.Column(db.String())
+    permissao_moderador = db.Column(db.Boolean)
+    id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('Associacao_Criticos.id'))
+
+
+    def __init__(self, nome, senha, permissao_mod, id_associacao_crit):
+        self.nome = nome
+        self.senha = senha
+        self.permissao_moderador = permissao_mod
+        self.id_associacao_criticos = id_associacao_crit
+
+class Associacao_Criticos(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String())
+
+    def __init__(self, nome):
+        self.nome = nome
+
+
+class Critica(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    conteudo = db.Column(db.String())
+    nota = db.Column(db.Float)
+    data = db.Column(Date)
+    id_usuario = db.Column(db.Integer, db.ForeignKey('Usuario.id'))
+
+    def __init__(self, conteudo, nota, data, id_usuario):
+        self.conteudo = conteudo
+        self.nota = nota
+        self.data = data
+        self.id_usuario = id_usuario
+
+class Obra(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String())
+    id_produtora = db.Column(db.Integer, db.ForeignKey('Produtora.id'))
+    genero = db.Column(db.String, db.ForeignKey('Genero.id'))
+    sinopse = db.Column(db.String())
+    data_estreia = db.Column(Date)
+    relacionados = db.Column(JSONType)
+
+    def __init__(self, nome, id_prod, genero, sinopse, data_estreia, relacionados):
+        self.nome = nome
+        self.id_produtora = id_prod
+        self.genero = genero
+        self.sinopse = sinopse
+        self.data_estreia = data_estreia
+        self.relacionados = relacionados
+    
+
+class Criticas_Obras(db.Model):
+    id_obra = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key = True)
+    id_critica = db.Column( db.Integer, db.ForeignKey('Critica.id'), primary_key=True)
+
+    def __init__(self):
+        pass
+
+
+class Genero(db.Model):
+    id = db.Column(db.String(), primary_key=True)
+    def __init__(self):
+        pass
+
+class Filme(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('Obra.id'))
+    bilheteria = db.Column(db.Integer)
+    
+    def __init__(self, bilheteria):
+        self.bilheteria = bilheteria
+
+class Serie(db.Model):
+    id = db.Column(db.Integer, db.ForeignKey('Obra.id'))
+    data_fim = db.Column(Date)
+    episodios = db.Column(db.Integer)
+
+    def __init__(self, data, ep):
+        self.data_fim = data
+        self.episodios = ep
+
+class Produtora(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String())
+
+    def __init__(self, nome):
+        self.nome = nome
+
+
+class Premio(db.Model):
+    id = db.Column(db.Integer, primary_key="True", autoincrement=True)
+    nome = db.Column(db.String)
+    categoria = db.Column(db.String())
+    data = db.Column(Date)
+
+
+    def __init__(self, nome, categ, data):
+        self.nome = nome
+        self.categoria = categ
+        self.data = data
+
+
+
+class Staff(db.Model):
+    id = db.Column(db.Integer, primary_key="True", autoincrement=True)
+    nome_artístico = db.Column(db.String())
+    nome = db.Column(db.String())
+    data_nascimento = db.Columnd(Date)
+    foto = db.Column(db.LargeBinary())
+    local_nascimento = db.Column(db.String())
+    maior_nota_recebida = db.Column(db.Float)
+    menor_nota_recebida = db.Column(db.FLoat)
+
+    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc, maior_nota, menor_nota):
+        self.nome = nome
+        self.nome_artístico = nome_art
+        self.data_nascimento = data_nasc
+        self.foto = foto
+        self.local_nascimento = local_nasc
+        self.maior_nota_recebida = maior_nota
+        self.menor_nota_recebida = menor_nota
+    
+
+class Cargo(db.Model):
+    id = db.Column(db.String(), primary_key="True")
+
+    def __init__(self):
+        pass
