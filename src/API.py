@@ -187,12 +187,12 @@ def autenticar(usuario=False, moderador=False):
 
             # TODO: pegar o usuario pelo id
             #usuario = UsuarioController.procurar_por_id(id_usuario)
-            usuario = None
+            user = None
             if not usuario:
                 return erro
 
             # FIXME mudar
-            if (admin and not usuario.admin) and (gestor and usuario.admin):
+            if (moderador and not user.admin) and (moderador and user.admin):
                 return erro
 
             return fn(*args, **kwargs, usuario_solicitante=usuario)
