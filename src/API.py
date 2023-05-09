@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Date
 from sqlalchemy_utils import JSONType
 
+import jwt
+from datetime import datetime as dt, timedelta
 
 
 
@@ -145,6 +147,14 @@ class Cargo(db.Model):
     def __init__(self):
         pass
 
+def encode(dados):
+    return jwt.encode(dados, os.getenv('JWT_SECRET'), algorithm='HS256')
+
+def decode(dados):
+    return jwt.decode(dados, os.getenv('JWT_SECRET'), algorithms=["HS256"])
+
+def criptografar(senha):
+    return sha256(bytes(senha ,'utf8')).hexdigest()
 
 def autenticar(usuario=False, moderador=False):
 
