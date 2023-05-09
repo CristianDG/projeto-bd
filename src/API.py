@@ -137,6 +137,7 @@ class Staff(db.Model):
     local_nascimento = db.Column(db.String())
 
     def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
+    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
         self.nome = nome
         self.nome_artístico = nome_art
         self.data_nascimento = data_nasc
@@ -518,8 +519,6 @@ def buscar_obra(obra_id):
     else:
         return jsonify({'mensagem':'Obra não encontrada.'}), 404
 
-
-
 @app.route('/obras/<int:obra_id>', methods=['PUT'])
 def atualizar_obra(obra_id):
     obra = Obra.query.get(obra_id)
@@ -554,6 +553,8 @@ def excluir_obra(usuario_id_mod, obra_id):
         return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
     else:
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
+
+
 
 @app.route('/generos', methods=['POST'])
 def cadastrar_genero():
