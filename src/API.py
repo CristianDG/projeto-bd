@@ -555,4 +555,43 @@ def excluir_obra(usuario_id_mod, obra_id):
     else:
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
 
+@app.route('/generos', methods=['POST'])
+def cadastrar_genero():
+    genero = Genero(id=request.json['id'])
+    db.session.add(genero)
+    db.session.commit()
+    return jsonify(
+        {
+            'id': genero.id
+        }
+    )
 
+@app.route('/generos/<int:genero_id>', methods=['DELETE'])
+def excluir_genero(genero_id):
+    genero = Genero.query.get(genero_id)
+    if genero:
+        db.session.delete(genero)
+        db.session.commit()
+        return '', 204
+    else:
+        return jsonify({'mensagem': 'Gênero não encontrado.'}), 404
+
+@app.route('/generos/<int:genero_id>', methods=['GET'])
+def buscar_genero(genero_id):
+    genero = Genero.query.get(genero_id)
+    if genero:
+        return jsonify(
+            {
+                'id': genero.id
+            }
+        )
+    else:
+        return jsonify({'mensagem':'Gênero não encontrado.'}), 404
+    
+@app.route('/generos', methods=['GET'])
+def listar_generos():
+    generos = Genero.query.all()
+    lista_generos = []
+    for genero in generos:
+        lista_generos.append({'id': genero.id})
+    return jsonify(lista_generos)
