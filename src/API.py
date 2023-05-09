@@ -135,8 +135,6 @@ class Staff(db.Model):
     data_nascimento = db.Column(Date)
     foto = db.Column(db.LargeBinary())
     local_nascimento = db.Column(db.String())
-    maior_nota_recebida = db.Column(db.Float)
-    menor_nota_recebida = db.Column(db.Float)
 
     def __init__(self, nome, nome_art, data_nasc, foto, local_nasc, maior_nota, menor_nota):
         self.nome = nome
@@ -144,8 +142,6 @@ class Staff(db.Model):
         self.data_nascimento = data_nasc
         self.foto = foto
         self.local_nascimento = local_nasc
-        self.maior_nota_recebida = maior_nota
-        self.menor_nota_recebida = menor_nota
     
 
 class Cargo(db.Model):
@@ -599,94 +595,3 @@ def listar_generos():
     for genero in generos:
         lista_generos.append({'id': genero.id})
     return jsonify(lista_generos)
-
-@app.route('/produtoras', methods=['POST'])
-def cadastrar_produtora():
-    produtora = Produtora(nome=request.json['nome'])
-    db.session.add(produtora)
-    db.session.commit()
-    return jsonify(
-        {
-            'id': produtora.id,
-            'nome': produtora.nome
-        }
-    )
-
-@app.route('/produtoras/<int:produtora_id>', methods=['DELETE'])
-def excluir_produtora(produtora_id):
-    produtora = Produtora.query.get(produtora_id)
-    if produtora:
-        db.session.delete(produtora)
-        db.session.commit()
-        return '', 204
-    else:
-        return jsonify({'mensagem': 'Produtora não encontrada.'}), 404
-    
-@app.route('/produtoras/<int:produtora_id>', methods=['GET'])
-def buscar_produtora(produtora_id):
-    produtora = Produtora.query.get(produtora_id)
-    if produtora:
-        return jsonify({'id': produtora.id, 'nome': produtora.nome})
-    else:
-        return jsonify({'mensagem':'Produtora não encontrada.'}), 404
-    
-@app.route('/produtoras', methods=['GET'])
-def listar_produtoras():
-    produtoras = Produtora.query.all()
-    lista_produtoras = []
-    for produtora in produtoras:
-        lista_produtoras.append({'id': produtora.id, 'nome': produtora.nome})
-    return jsonify(lista_produtoras)
-
-@app.route('/premios', methods=['POST'])
-def cadastrar_premio():
-    nome = request.json['nome']
-    categoria = request.json['categoria']
-    data = request.json['data']
-    
-    premio = Premio(nome=nome, categoria=categoria, data=data)
-    db.session.add(premio)
-    db.session.commit()
-    
-    return jsonify({
-        'id': premio.id,
-        'nome': premio.nome,
-        'categoria': premio.categoria,
-        'data': premio.data.strftime('%Y-%m-%d')
-    })
-
-@app.route('/premios/<int:premio_id>', methods=['DELETE'])
-def excluir_premio(premio_id):
-    premio = Premio.query.get(premio_id)
-    if premio:
-        db.session.delete(premio)
-        db.session.commit()
-        return '', 204
-    else:
-        return jsonify({'mensagem': 'Prêmio não encontrado.'}), 404
-    
-@app.route('/premios/<int:premio_id>', methods=['GET'])
-def buscar_premio(premio_id):
-    premio = Premio.query.get(premio_id)
-    if premio:
-        return jsonify({
-            'id': premio.id,
-            'nome': premio.nome,
-            'categoria': premio.categoria,
-            'data': premio.data.strftime('%Y-%m-%d')
-        })
-    else:
-        return jsonify({'mensagem':'Prêmio não encontrado.'}), 404
-    
-@app.route('/premios', methods=['GET'])
-def listar_premios():
-    premios = Premio.query.all()
-    lista_premios = []
-    for premio in premios:
-        lista_premios.append({
-            'id': premio.id,
-            'nome': premio.nome,
-            'categoria': premio.categoria,
-            'data': premio.data.strftime('%Y-%m-%d')
-        })
-    return jsonify(lista_premios)
