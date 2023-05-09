@@ -226,6 +226,163 @@ def excluir_usuario(usuario_id_mod, usuario_id):
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
 
 
+
+@app.route('/associacao_criticos', methods=['GET'])
+def listar_assoc_criticos():
+    assoc_crits = Associacao_Criticos.query.all()
+    return jsonify(
+        [{
+            'id': assoc_crits.id,
+            'nome': assoc_crits.nome
+        }]
+    )
+
+@app.route('/associacao_criticos', methods=['POST'])
+def cadastrar_assoc_criticos():
+    assoc_crit = Associacao_Criticos(request.json['nome'])
+    db.session.add(assoc_crit)
+    db.session.commit()
+    return jsonify(
+        [{
+            'id': assoc_crit.id,
+            'nome': assoc_crit.nome
+        }]
+    )
+
+
+@app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['GET'])
+def buscar_assoc_crit(assoc_crit_id):
+    assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
+    if assoc_crit:
+        return jsonify(
+            [{
+                'id': assoc_crit.id,
+                'nome': assoc_crit.nome
+            }]
+        )
+
+
+@app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['PUT'])
+def atualizar_assoc_crit(assoc_crit_id):
+    assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
+    if assoc_crit:
+        assoc_crit.nome = request.json.get('nome', assoc_crit.nome)
+        db.session.commit()
+        return jsonify(
+            [{
+                'id': assoc_crit.id,
+                'nome': assoc_crit.nome
+            }]
+        )
+
+
+@app.route('/associacao_criticos/<int:usuario_id_mod/<int:assoc_crit_id', methods=['DELETE'])
+def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
+    user_mod = Usuario.query.get(usuario_id_mod)
+    if user_mod.permissao_moderador == True:
+        assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
+        if assoc_crit:
+            db.session.delete(assoc_crit)
+            db.session.commit()
+            return '', 204
+        else:
+            return jsonify({'mensagem':'Associaçao de Críticos não encontrada.'}), 404
+
+    elif user_mod.permissao_moderador == False:
+        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+    else:
+        return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
+
+
+
+@app.route('/criticas/<int:obra_id>', methods=['GET'])
+def listar_criticas_filme(obra_id):
+    criticas = Critica.query.all()
+    return jsonify(
+        [{
+            'id': critica.id,
+            'conteudo': critica.conteudo,
+            'nota': critica.nota,
+            'data': critica.data,
+            'id_usuario': critica.id_usuario 
+        } for critica in criticas if critica.id_obra == obra_id]
+    )
+
+@app.route('/criticas', methods=['POST'])
+def cadastrar_critica():
+    crit = Critica(request.json['conteudo'], request.json['nota'], request.json['data'], request.json['id_usuario'], request.json['id_obra'])
+    db.session.add(crit)
+    db.session.commit()
+    return jsonify(
+        {
+            'id': crit.id,
+            'conteudo': crit.conteudo,
+            'nota': crit.nota,
+            'data': crit.data,
+            'editada': crit.editada,
+            'id_usuario': crit.id_usuario
+        }
+    )
+
+
+@app.route('criticas/<int: critica_id>', methods=['GET'])
+def buscar_critica(critica_id):
+    crit = Critica.query.get(critica_id)
+    if crit:
+        return jsonify(
+            {
+                'id': crit.id,
+                'conteudo': crit.conteudo,
+                'nota': crit.nota,
+                'data': crit.data,
+                'editada': crit.editada,
+                'id_usuario': crit.id_usuario
+            }
+        )
+    
+    else:
+        return jsonify({'mensagem':'Critica não encontrada.'}), 404
+
+@app.route('/criticas/<int:critica_id>', methods=['PUT'])
+def atualizar_critica(critica_id):
+    crit = Critica.query.get(critica_id)
+    if crit:
+        crit.conteudo = request.json.get('conteudo', crit.conteudo)
+        crit.nota = request.json.get('nota', crit.nota)
+        crit.editada = True
+        db.session.commit()
+        return jsonify(
+            {
+                'id': crit.id,
+                'conteudo': crit.conteudo,
+                'nota': crit.nota,
+                'data': crit.data,
+                'editada': crit.editada,
+                'id_usuario': crit.id_usuario
+            }
+        )
+    
+    else:
+        return jsonify({'mensagem':'Critica não encontrada.'}), 404
+
+
+
+@app.route('/criticas/<int:user_id_mod>/<int:critica_id>', methods=['DELETE'])
+def excluir_critica(usuario_id_mod, critica_id):
+    user_mod = Usuario.query.get(usuario_id_mod)
+    if user_mod.permissao_moderador == True:
+        crit = Usuario.query.get(critica_id)
+        if user:
+            db.session.delete(crit)
+            db.session.commit()
+            return '', 204
+        else:
+            return jsonify({'mensagem':'Crítica não encontrado.'}), 404
+    elif user_mod.permissao_moderador == False:
+        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+    else:
+        return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
+
 @app.route('/obras', methods=['POST'])
 def cadastrar_obra():
     obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'])
