@@ -136,7 +136,7 @@ class Staff(db.Model):
     foto = db.Column(db.LargeBinary())
     local_nascimento = db.Column(db.String())
 
-    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc, maior_nota, menor_nota):
+    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
         self.nome = nome
         self.nome_artístico = nome_art
         self.data_nascimento = data_nasc
@@ -595,3 +595,55 @@ def listar_generos():
     for genero in generos:
         lista_generos.append({'id': genero.id})
     return jsonify(lista_generos)
+
+@app.route('/staff', methods=['POST'])
+def cadastrar_staff():
+    nome = request.json['nome']
+    nome_artistico = request.json['nome_artistico']
+    data_nascimento = dt.strptime(request.json['data_nascimento'], '%Y-%m-%d').date()
+    foto = request.json['foto']
+    local_nascimento = request.json['local_nascimento']
+
+    novo_staff = Staff(nome=nome, nome_artístico=nome_artistico, data_nascimento=data_nascimento, foto=foto, local_nascimento=local_nascimento)
+    db.session.add(novo_staff)
+    db.session.commit()
+
+    return jsonify({'id': novo_staff.id})
+
+@app.route('/staff/<int:staff_id>', methods=['DELETE'])
+def excluir_staff(staff_id):
+    staff = Staff.query.get(staff_id)
+    if staff:
+        db.session.delete(staff)
+        db.session.commit()
+        return '', 204
+    else:
+        return jsonify({'mensagem': 'Staff não encontrado.'}), 404
+    
+@app.route('/staff/<int:staff_id>', methods=['GET'])
+def buscar_staff(staff_id):
+    staff = Staff.query.get(staff_id)
+    if staff:
+        return jsonify({
+            'id': staff.id,
+            'nome': staff.nome,
+            'nome_artistico': staff.nome_artístico,
+            'data_nascimento': str(staff.data_nascimento),
+            'local_nascimento': staff.local_nascimento
+        })
+    else:
+        return jsonify({'mensagem': 'Staff não encontrado.'}), 404
+    
+@app.route('/staff', methods=['GET'])
+def listar_staffs():
+    staffs = Staff.query.all()
+    lista_staffs = []
+    for staff in staffs:
+        lista_staffs.append({
+            'id': staff.id,
+            'nome': staff.nome,
+            'nome_artistico': staff.nome_artístico,
+            'data_nascimento': str(staff.data_nascimento),
+            'local_nascimento': staff.local_nascimento
+        })
+    return jsonify(lista_staffs)
