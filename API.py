@@ -44,12 +44,16 @@ class Critica(db.Model):
     nota = db.Column(db.Float)
     data = db.Column(Date)
     id_usuario = db.Column(db.Integer, db.ForeignKey('Usuario.id'))
+    id_obra = db.Column(db.Integer, db.ForeignKey('Obra.id'))
+    editada = db.Column(db.Boolean)
 
-    def __init__(self, conteudo, nota, data, id_usuario):
+    def __init__(self, conteudo, nota, data, id_usuario, id_obra):
         self.conteudo = conteudo
         self.nota = nota
         self.data = data
         self.id_usuario = id_usuario
+        self.id_obra = id_obra
+        self.editada = False 
 
 class Obra(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -294,6 +298,100 @@ def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
         return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
 
 
+
+@app.route('/criticas/<int:obra_id>', methods=['GET'])
+def listar_criticas_filme(obra_id):
+    criticas = Critica.query.all()
+    return jsonify(
+        [{
+            'id': critica.id,
+            'conteudo': critica.conteudo,
+            'nota': critica.nota,
+            'data': critica.data,
+            'id_usuario': critica.id_usuario 
+        } for critica in criticas if critica.id_obra == obra_id]
+    )
+
+@app.route('/criticas', methods=['POST'])
+def cadastrar_critica():
+    crit = Critica(request.json['conteudo'], request.json['nota'], request.json['data'], request.json['id_usuario'], request.json['id_obra'])
+    db.session.add(crit)
+    db.session.commit()
+    return jsonify(
+        {
+            'id': crit.id,
+            'conteudo': crit.conteudo,
+            'nota': crit.nota,
+            'data': crit.data,
+            'editada': crit.editada,
+            'id_usuario': crit.id_usuario
+        }
+    )
+
+
+@app.route('criticas/<int: critica_id>', methods=['GET'])
+def buscar_critica(critica_id):
+    crit = Critica.query.get(critica_id)
+    if crit:
+        return jsonify(
+            {
+                'id': crit.id,
+                'conteudo': crit.conteudo,
+                'nota': crit.nota,
+                'data': crit.data,
+                'editada': crit.editada,
+                'id_usuario': crit.id_usuario
+            }
+        )
+    
+    else:
+        return jsonify({'mensagem':'Critica não encontrada.'}), 404
+
+@app.route('/criticas/<int:critica_id>', methods=['PUT'])
+def atualizar_critica(critica_id):
+    crit = Critica.query.get(critica_id)
+    if crit:
+        crit.conteudo = request.json.get('conteudo', crit.conteudo)
+        crit.nota = request.json.get('nota', crit.nota)
+        crit.editada = True
+        db.session.commit()
+        return jsonify(
+            {
+                'id': crit.id,
+                'conteudo': crit.conteudo,
+                'nota': crit.nota,
+                'data': crit.data,
+                'editada': crit.editada,
+                'id_usuario': crit.id_usuario
+            }
+        )
+    
+    else:
+        return jsonify({'mensagem':'Critica não encontrada.'}), 404
+
+
+
+@app.route('/criticas/<int:user_id_mod>/<int:critica_id>', methods=['DELETE'])
+def excluir_critica(usuario_id_mod, critica_id):
+    user_mod = Usuario.query.get(usuario_id_mod)
+    if user_mod.permissao_moderador == True:
+        crit = Usuario.query.get(critica_id)
+        if user:
+            db.session.delete(crit)
+            db.session.commit()
+            return '', 204
+        else:
+            return jsonify({'mensagem':'Crítica não encontrado.'}), 404
+    elif user_mod.permissao_moderador == False:
+        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+    else:
+        return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
+
+
+@app.route('/', methods=[''])
+@app.route('/', methods=[''])
+@app.route('/', methods=[''])
+@app.route('/', methods=[''])
 @app.route('/obras', methods=['POST'])
 def cadastrar_obra():
     obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'])
