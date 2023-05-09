@@ -599,3 +599,41 @@ def listar_generos():
     for genero in generos:
         lista_generos.append({'id': genero.id})
     return jsonify(lista_generos)
+
+@app.route('/produtoras', methods=['POST'])
+def cadastrar_produtora():
+    produtora = Produtora(nome=request.json['nome'])
+    db.session.add(produtora)
+    db.session.commit()
+    return jsonify(
+        {
+            'id': produtora.id,
+            'nome': produtora.nome
+        }
+    )
+
+@app.route('/produtoras/<int:produtora_id>', methods=['DELETE'])
+def excluir_produtora(produtora_id):
+    produtora = Produtora.query.get(produtora_id)
+    if produtora:
+        db.session.delete(produtora)
+        db.session.commit()
+        return '', 204
+    else:
+        return jsonify({'mensagem': 'Produtora não encontrada.'}), 404
+    
+@app.route('/produtoras/<int:produtora_id>', methods=['GET'])
+def buscar_produtora(produtora_id):
+    produtora = Produtora.query.get(produtora_id)
+    if produtora:
+        return jsonify({'id': produtora.id, 'nome': produtora.nome})
+    else:
+        return jsonify({'mensagem':'Produtora não encontrada.'}), 404
+    
+@app.route('/produtoras', methods=['GET'])
+def listar_produtoras():
+    produtoras = Produtora.query.all()
+    lista_produtoras = []
+    for produtora in produtoras:
+        lista_produtoras.append({'id': produtora.id, 'nome': produtora.nome})
+    return jsonify(lista_produtoras)
