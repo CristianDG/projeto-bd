@@ -225,3 +225,20 @@ def excluir_usuario(usuario_id_mod, usuario_id):
         return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
     else:
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
+
+
+@app.route('/obras', methods=['POST'])
+def cadastrar_obra():
+    obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'])
+    db.session.add(obra)
+    db.session.commit()
+    return jsonify(
+        [{
+            'id': obra.id,
+            'nome': obra.nome,
+            'sinopse': obra.sinopse,
+            'genero': obra.genero,
+            'id_prod': obra.id_prod,
+            'data_estreia': obra.data_estreia
+        }]
+    )
