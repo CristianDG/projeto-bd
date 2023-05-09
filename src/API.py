@@ -9,11 +9,10 @@ from sqlalchemy_utils import JSONType
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATAdb.Model_URI'] = "postgresql://postgres:teste123@projetobd-aws-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:teste123@projetobd-aws-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
 
 # Criar Classes para todas as entidades.
 class Usuario(db.Model):
@@ -161,7 +160,7 @@ def listar_usuarios():
         }for usuario in usuarios]
     )
 
-@app.rout('/usuarios', methods=['POST'])
+@app.route('/usuarios', methods=['POST'])
 def cadastrar_usuario():
     user = Usuario(request.json['nome', request.json['senha'], request.json['permissao_moderador'], request.json['id_associacao_criticos']])
     db.session.add(user)
@@ -210,7 +209,7 @@ def atualizar_usuario(usuario_id):
         return jsonify({'mensagem':'Usuario não encontrado.'}), 404
 
 
-@app.route('usuarios/<int:usuario_id_mod>/<int:usuario_id>', methods=['DELETE'])
+@app.route('/usuarios/<int:usuario_id_mod>/<int:usuario_id>', methods=['DELETE'])
 def excluir_usuario(usuario_id_mod, usuario_id):
     user_mod = Usuario.query.get(usuario_id_mod)
     if user_mod.permissao_moderador == True:
