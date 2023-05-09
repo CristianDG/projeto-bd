@@ -146,6 +146,59 @@ class Cargo(db.Model):
         pass
 
 
+def autenticar(usuario=False, moderador=False):
+
+    def wrapper(fn):
+        @wraps(fn)
+        def inner(*args, **kwargs):
+            erro = { 'error': 'não autorizado' }, 401
+
+            if 'Authorization' not in request.headers:
+                return erro
+
+            token = decode(request.headers['Authorization'])
+            id_usuario = None
+            try:
+                id_usuario = int(token['id'])
+            except:
+                return erro
+
+            ttl_token = timedelta(hours=3)
+
+            data_token = dt.fromtimestamp(token['data'])
+            agora = dt.now()
+
+            if (agora - data_token) > ttl_token:
+                return {'error': 'token expirado'}, 403
+
+            # TODO: pegar o usuario pelo id
+            #usuario = UsuarioController.procurar_por_id(id_usuario)
+            usuario = None
+            if not usuario:
+                return erro
+
+            # FIXME mudar
+            if (admin and not usuario.admin) and (gestor and usuario.admin):
+                return erro
+
+            return fn(*args, **kwargs, usuario_solicitante=usuario)
+
+        return inner
+    return wrapper
+
+@app.post('/login')
+def login():
+    usuario_json = request.get_json()
+
+    # TODO: pegar o usuario do banco
+    #usuario = UsuarioController.procurar_por_login(usuario_json['email'], criptografar(usuario_json['senha']))
+    usuario = None
+    if not usuario:
+        return {'error': 'email ou senha incorretos'}, 400
+
+    token = encode({'id': usuario.id, 'data': dt.now().timestamp()})
+
+    return { 'token': token, 'adm': usuario.admin }, 200
 
 # Rotas
 @app.route('/usuarios', methods=['GET'])
