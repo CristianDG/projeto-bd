@@ -372,7 +372,7 @@ def excluir_critica(usuario_id_mod, critica_id):
     user_mod = Usuario.query.get(usuario_id_mod)
     if user_mod.permissao_moderador == True:
         crit = Usuario.query.get(critica_id)
-        if user:
+        if crit:
             db.session.delete(crit)
             db.session.commit()
             return '', 204
