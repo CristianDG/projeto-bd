@@ -17,7 +17,6 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:teste123@projetobd-aws-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
 # Criar Classes para todas as entidades.
@@ -26,13 +25,15 @@ class Usuario(db.Model):
     nome = db.Column(db.String())
     senha = db.Column(db.String())
     permissao_moderador = db.Column(db.Boolean)
+    ultimo_acesso = db.Column(Date)
     id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('Associacao_Criticos.id'))
 
 
-    def __init__(self, nome, senha, permissao_mod, id_associacao_crit):
+    def __init__(self, nome, senha, permissao_mod, ult_acesso, id_associacao_crit):
         self.nome = nome
         self.senha = senha
         self.permissao_moderador = permissao_mod
+        self.ultimo_acesso = ult_acesso
         self.id_associacao_criticos = id_associacao_crit
 
 class Associacao_Criticos(db.Model):
@@ -41,6 +42,7 @@ class Associacao_Criticos(db.Model):
 
     def __init__(self, nome):
         self.nome = nome
+
 
 
 class Critica(db.Model):
@@ -60,10 +62,12 @@ class Obra(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String())
     id_produtora = db.Column(db.Integer, db.ForeignKey('Produtora.id'))
-    genero = db.Column(db.String, db.ForeignKey('Genero.id'))
+    genero = db.Column(db.String, db.ForeignKey('Genero.id'), nullable=False)
     sinopse = db.Column(db.String())
+    tipo = db.Column(db.String(1))
     data_estreia = db.Column(Date)
-    relacionados = db.Column(JSONType)
+    filmes = db.relationship('Filme', backref='Obra', cascade='all, delete')
+    series = db.relationship('Serie', backref='Obra', cascade='all, delete')
 
     def __init__(self, nome, id_prod, genero, sinopse, data_estreia, relacionados):
         self.nome = nome
@@ -71,7 +75,6 @@ class Obra(db.Model):
         self.genero = genero
         self.sinopse = sinopse
         self.data_estreia = data_estreia
-        self.relacionados = relacionados
     
 
 class Criticas_Obras(db.Model):
@@ -450,18 +453,106 @@ def excluir_critica(usuario_id_mod, critica_id):
     else:
         return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
 
+
+
+
+
+@app.route('/obras', methods=['GET'])
+def listar_obras():
+    obras = Obra.query.all()
+    return jsonify(
+        [{
+            'id': obra.id,
+            'nome': obra.nome,
+            'produtora': Produtora.query.get(obra.id_produtora).nome,
+            'genero': obra.genero,
+            'sinopse': obra.sinopse,
+            'data_estreia': obra.data_estreia
+        }for obra in obras]
+    )
+
+
 @app.route('/obras', methods=['POST'])
 def cadastrar_obra():
-    obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'])
+    tipo = request.json['tipo'].upper()
+    if tipo not in ['F', 'S']:
+        return jsonify({'error': 'Tipo de obra inválido.'}), 400
+    obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'], tipo)
     db.session.add(obra)
     db.session.commit()
+    if tipo == 'F':
+        filme = Filme(obra.id, request.json['bilheteria'])
+        db.session.add(filme)
+        db.session.commit()
+    elif tipo == 'S':
+        serie = Serie(obra.id, request.json['data_fim'], request.json['episodios'])
+        db.session(serie)
+        db.commit()
     return jsonify(
         [{
             'id': obra.id,
             'nome': obra.nome,
             'sinopse': obra.sinopse,
             'genero': obra.genero,
-            'id_prod': obra.id_prod,
-            'data_estreia': obra.data_estreia
+            'id_prod': obra.id_produtora,
+            'data_estreia': obra.data_estreia,
+            'tipo': obra.tipo
         }]
     )
+
+
+@app.route('/obras/<int:obra_id>', methods=['GET'])
+def buscar_obra(obra_id):
+    obra = Obra.query.get(obra_id)
+    if obra:
+        return jsonify(
+            {
+                'id': obra.id,
+                'nome': obra.nome,
+                'produtora': Produtora.query.get(obra.id_produtora).nome,
+                'genero': obra.genero,
+                'sinopse': obra.sinopse,
+                'data_estreia': obra.data_estreia
+            }
+        )
+    else:
+        return jsonify({'mensagem':'Obra não encontrada.'}), 404
+
+
+
+@app.route('/obras/<int:obra_id>', methods=['PUT'])
+def atualizar_obra(obra_id):
+    obra = Obra.query.get(obra_id)
+    if obra:
+        obra.nome = request.json.get('nome', obra.nome)
+        db.session.commit()
+        return jsonify(
+            {
+                'id': obra.id,
+                'nome': obra.nome,
+                'produtora': Produtora.query.get(obra.id_produtora).nome,
+                'genero': obra.genero,
+                'sinopse': obra.sinopse,
+                'data_estreia': obra.data_estreia
+            }
+        )
+    else:
+        return jsonify({'mensagem':'Obra não encontrada.'}), 404
+
+@app.route('/obras/<int:usuario_id_mod>/<int:obra_id>', methods=['DELETE'])
+def excluir_obra(usuario_id_mod, obra_id):
+    user_mod = Usuario.query.get(usuario_id_mod)
+    if user_mod.permissao_moderador == True:
+        obra = Usuario.query.get(obra_id)
+        if obra:
+            db.session.delete(obra)
+            db.session.commit()
+            return '', 204
+        else:
+            return jsonify({'mensagem':'Usuario não encontrado.'}), 404
+    elif user_mod.permissao_moderador == False:
+        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+    else:
+        return jsonify({'mensagem': 'Usuário não encontrado'}), 404
+
+
