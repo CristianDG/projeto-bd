@@ -185,14 +185,17 @@ def autenticar(usuario=False, moderador=False):
             data_token = dt.fromtimestamp(token['data'])
             agora = dt.now()
 
+            # TODO: controlar a data do token com a data do último acesso
             if (agora - data_token) > ttl_token:
                 return {'error': 'token expirado'}, 403
+
 
             # TODO: pegar o usuario pelo id
             #usuario = UsuarioController.procurar_por_id(id_usuario)
             user = None
             if not user:
                 return erro
+
 
             # FIXME mudar
             if (moderador and not user.admin) and (moderador and user.admin):
@@ -213,6 +216,7 @@ def login():
     if not usuario:
         return {'error': 'email ou senha incorretos'}, 400
 
+    # TODO: mudar o ultimo acesso e retornar no lugar da data de agora
     token = encode({'id': usuario.id, 'data': dt.now().timestamp()})
 
     return { 'token': token, 'adm': usuario.admin }, 200
