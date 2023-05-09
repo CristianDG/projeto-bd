@@ -188,7 +188,7 @@ def autenticar(usuario=False, moderador=False):
             # TODO: pegar o usuario pelo id
             #usuario = UsuarioController.procurar_por_id(id_usuario)
             user = None
-            if not usuario:
+            if not user:
                 return erro
 
             # FIXME mudar
