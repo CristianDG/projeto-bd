@@ -82,14 +82,14 @@ class Genero(db.Model):
         pass
 
 class Filme(db.Model):
-    id = db.Column(db.Integer, db.ForeignKey('Obra.id'))
+    id = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key=True)
     bilheteria = db.Column(db.Integer)
     
     def __init__(self, bilheteria):
         self.bilheteria = bilheteria
 
 class Serie(db.Model):
-    id = db.Column(db.Integer, db.ForeignKey('Obra.id'))
+    id = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key=True)
     data_fim = db.Column(Date)
     episodios = db.Column(db.Integer)
 
@@ -123,11 +123,11 @@ class Staff(db.Model):
     id = db.Column(db.Integer, primary_key="True", autoincrement=True)
     nome_artístico = db.Column(db.String())
     nome = db.Column(db.String())
-    data_nascimento = db.Columnd(Date)
+    data_nascimento = db.Column(Date)
     foto = db.Column(db.LargeBinary())
     local_nascimento = db.Column(db.String())
     maior_nota_recebida = db.Column(db.Float)
-    menor_nota_recebida = db.Column(db.FLoat)
+    menor_nota_recebida = db.Column(db.Float)
 
     def __init__(self, nome, nome_art, data_nasc, foto, local_nasc, maior_nota, menor_nota):
         self.nome = nome
@@ -329,7 +329,7 @@ def atualizar_assoc_crit(assoc_crit_id):
         )
 
 
-@app.route('/associacao_criticos/<int:usuario_id_mod/<int:assoc_crit_id', methods=['DELETE'])
+@app.route('/associacao_criticos/<int:usuario_id_mod>/<int:assoc_crit_id>', methods=['DELETE'])
 def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
     user_mod = Usuario.query.get(usuario_id_mod)
     if user_mod.permissao_moderador == True:
@@ -378,7 +378,7 @@ def cadastrar_critica():
     )
 
 
-@app.route('criticas/<int: critica_id>', methods=['GET'])
+@app.route('/criticas/<int:critica_id>', methods=['GET'])
 def buscar_critica(critica_id):
     crit = Critica.query.get(critica_id)
     if crit:
