@@ -137,7 +137,6 @@ class Staff(db.Model):
     local_nascimento = db.Column(db.String())
 
     def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
-    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
         self.nome = nome
         self.nome_artístico = nome_art
         self.data_nascimento = data_nasc
@@ -648,3 +647,22 @@ def listar_staffs():
             'local_nascimento': staff.local_nascimento
         })
     return jsonify(lista_staffs)
+
+@app.route('/cargos', methods=['POST'])
+def cadastrar_cargo():
+    id = request.json['id']
+    novo_cargo = Cargo(id=id)
+    db.session.add(novo_cargo)
+    db.session.commit()
+    return jsonify({'id': novo_cargo.id})
+
+@app.route('/cargos', methods=['GET'])
+def listar_cargos():
+    cargos = Cargo.query.all()
+    lista_cargos = []
+    for cargo in cargos:
+        lista_cargos.append({
+            'id': cargo.id
+        })
+    return jsonify(lista_cargos)
+    
