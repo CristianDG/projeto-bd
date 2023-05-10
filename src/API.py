@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Date, ForeignKey
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy import Date, ForeignKey, create_engine
+from sqlalchemy.orm import mapped_column, Mapped, Session
 from sqlalchemy_utils import JSONType
 
 import jwt
@@ -18,6 +18,9 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:teste123@projetobd-aws-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
+
 db = SQLAlchemy(app)
 
 # Criar Classes para todas as entidades.
@@ -31,11 +34,12 @@ class Associacao_Criticos(db.Model):
         self.nome = nome
 
 class Usuario(db.Model):
+    __tablename__ = "usuario"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String())
     senha = db.Column(db.String())
     permissao_moderador = db.Column(db.Boolean)
-    id_associacao_criticos: Mapped[int] = mapped_column(ForeignKey('associacao_Criticos.id'))
+    id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('associacao_criticos.id'), nullable=False)
     ultimo_acesso = db.Column(Date, default= dt.now())
 
 
@@ -53,7 +57,7 @@ class Critica(db.Model):
     conteudo = db.Column(db.String())
     nota = db.Column(db.Float)
     data = db.Column(Date)
-    id_usuario = db.Column(db.Integer, db.ForeignKey('Usuario.id'))
+    id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'))
 
     def __init__(self, conteudo, nota, data, id_usuario):
         self.conteudo = conteudo
@@ -62,15 +66,15 @@ class Critica(db.Model):
         self.id_usuario = id_usuario
 
 class Obra(db.Model):
+    __tablename__ = "obra"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String())
-    id_produtora = db.Column(db.Integer, db.ForeignKey('Produtora.id'))
-    genero = db.Column(db.String, db.ForeignKey('Genero.id'), nullable=False)
+    id_produtora = db.Column(db.Integer, ForeignKey('produtora.id'))
+    genero = db.Column(db.String, db.ForeignKey('genero.id'), nullable=False)
     sinopse = db.Column(db.String())
     tipo = db.Column(db.String(1))
     data_estreia = db.Column(Date)
-    filmes = db.relationship('Filme', backref='Obra', cascade='all, delete')
-    series = db.relationship('Serie', backref='Obra', cascade='all, delete')
+
 
     def __init__(self, nome, id_prod, genero, sinopse, data_estreia, relacionados):
         self.nome = nome
@@ -81,8 +85,8 @@ class Obra(db.Model):
     
 
 class Criticas_Obras(db.Model):
-    id_obra = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key = True)
-    id_critica = db.Column( db.Integer, db.ForeignKey('Critica.id'), primary_key=True)
+    id_obra = db.Column(db.Integer, db.ForeignKey('obra.id'), primary_key = True)
+    id_critica = db.Column( db.Integer, db.ForeignKey('critica.id'), primary_key=True)
 
     def __init__(self):
         pass
@@ -94,14 +98,14 @@ class Genero(db.Model):
         pass
 
 class Filme(db.Model):
-    id = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key=True)
+    id = db.Column(db.Integer, db.ForeignKey('obra.id'), primary_key=True)
     bilheteria = db.Column(db.Integer)
     
     def __init__(self, bilheteria):
         self.bilheteria = bilheteria
 
 class Serie(db.Model):
-    id = db.Column(db.Integer, db.ForeignKey('Obra.id'), primary_key=True)
+    id = db.Column(db.Integer, db.ForeignKey('obra.id'), primary_key=True)
     data_fim = db.Column(Date)
     episodios = db.Column(db.Integer)
 
@@ -110,6 +114,7 @@ class Serie(db.Model):
         self.episodios = ep
 
 class Produtora(db.Model):
+    __tablename__ = "produtora"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String())
 
@@ -152,6 +157,8 @@ class Cargo(db.Model):
 
     def __init__(self):
         pass
+
+
 
 def encode(dados):
     return jwt.encode(dados, os.getenv('JWT_SECRET'), algorithm='HS256')
