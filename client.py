@@ -14,9 +14,24 @@ class TestAPI(unittest.TestCase):
             db.create_all()
     
     def tearDown(self):
-        with app.app_context():  # Criando o contexto de aplicação
+        with app.app_context():
             db.session.remove()
-            db.drop_all()
+
+            # Get the metadata of the database
+            metadata = db.metadata
+
+            # Reflect the existing database tables
+            metadata.reflect(bind=db.engine)
+
+            # Get the tables created during the test
+            test_tables = [table for table in metadata.sorted_tables if 'test_' in table.name]
+
+            # Drop the test tables
+            for table in reversed(test_tables):
+                table.drop(db.engine)
+
+            db.session.commit()
+
     
     def test_criar_usuario(self):
         response = self.app.post('/usuarios', json={'nome':'Arthur Henrique', 'senha': 'teste123', 'permissao_moderador':True, 'id_associacao_criticos': None})
