@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Date
+from sqlalchemy import Date, ForeignKey
+from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy_utils import JSONType
 
 import jwt
@@ -20,28 +21,30 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Criar Classes para todas as entidades.
-class Usuario(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String())
-    senha = db.Column(db.String())
-    permissao_moderador = db.Column(db.Boolean)
-    ultimo_acesso = db.Column(Date)
-    id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('Associacao_Criticos.id'))
-
-
-    def __init__(self, nome, senha, permissao_mod, ult_acesso, id_associacao_crit):
-        self.nome = nome
-        self.senha = senha
-        self.permissao_moderador = permissao_mod
-        self.ultimo_acesso = ult_acesso
-        self.id_associacao_criticos = id_associacao_crit
-
 class Associacao_Criticos(db.Model):
+    __tablename__ = "associacao_criticos"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String())
 
     def __init__(self, nome):
         self.nome = nome
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String())
+    senha = db.Column(db.String())
+    permissao_moderador = db.Column(db.Boolean)
+    id_associacao_criticos: Mapped[int] = mapped_column(ForeignKey('associacao_Criticos.id'))
+    ultimo_acesso = db.Column(Date, default= dt.now())
+
+
+    def __init__(self, nome, senha, permissao_mod, id_associacao_critos):
+        self.nome = nome
+        self.senha = senha
+        self.permissao_moderador = permissao_mod
+        self.id_associacao_criticos = id_associacao_critos
+
 
 
 
@@ -232,7 +235,12 @@ def listar_usuarios():
 
 @app.route('/usuarios', methods=['POST'])
 def cadastrar_usuario():
-    user = Usuario(request.json['nome', request.json['senha'], request.json['permissao_moderador'], request.json['id_associacao_criticos']])
+    user = Usuario(
+        request.json['nome'],
+        request.json['senha'],
+        request.json['permissao_moderador'],
+        request.json['id_associacao_criticos']
+    )
     db.session.add(user)
     db.session.commit()
     return jsonify(
@@ -665,4 +673,3 @@ def listar_cargos():
             'id': cargo.id
         })
     return jsonify(lista_cargos)
-    
