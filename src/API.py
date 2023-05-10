@@ -23,7 +23,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Criar Classes para todas as entidades.
+# Cada classe representa uma entidade do banco.
 class Associacao_Criticos(db.Model):
     __tablename__ = "associacao_criticos"
 
@@ -227,7 +227,9 @@ def login():
 
     return { 'token': token, 'adm': usuario.admin }, 200
 
-# Rotas
+# Rotas da API
+
+# *************ROTAS DE USUÁRIO****************************
 @app.route('/usuarios', methods=['GET'])
 def listar_usuarios():
     usuarios = Usuario.query.all()
@@ -310,8 +312,11 @@ def excluir_usuario(usuario_id_mod, usuario_id):
     else:
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
 
+# *************ROTAS DE USUÁRIO****************************
 
 
+
+# *************ROTAS DE ASSOCIACAO CRITICOS****************************
 @app.route('/associacao_criticos', methods=['GET'])
 def listar_assoc_criticos():
     assoc_crits = Associacao_Criticos.query.all()
@@ -378,8 +383,11 @@ def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
     else:
         return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
 
+# *************ROTAS DE ASSOCIACAO CRITICOS****************************
 
 
+
+# *************ROTAS DE CRITICA****************************
 @app.route('/criticas/<int:obra_id>', methods=['GET'])
 def listar_criticas_filme(obra_id):
     criticas = Critica.query.all()
@@ -468,10 +476,10 @@ def excluir_critica(usuario_id_mod, critica_id):
     else:
         return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
 
+# *************ROTAS DE CRITICA****************************
 
 
-
-
+# *************ROTAS DE OBRA****************************
 @app.route('/obras', methods=['GET'])
 def listar_obras():
     obras = Obra.query.all()
@@ -568,8 +576,11 @@ def excluir_obra(usuario_id_mod, obra_id):
     else:
         return jsonify({'mensagem': 'Usuário não encontrado'}), 404
 
+# *************ROTAS DE OBRA****************************
 
 
+
+# *************ROTAS DE GENERO****************************
 @app.route('/generos', methods=['POST'])
 def cadastrar_genero():
     genero = Genero(id=request.json['id'])
@@ -611,6 +622,9 @@ def listar_generos():
         lista_generos.append({'id': genero.id})
     return jsonify(lista_generos)
 
+# *************ROTAS DE GENERO****************************
+
+# *************ROTAS DE STAFF****************************
 @app.route('/staff', methods=['POST'])
 def cadastrar_staff():
     nome = request.json['nome']
@@ -663,6 +677,9 @@ def listar_staffs():
         })
     return jsonify(lista_staffs)
 
+# *************ROTAS DE STAFF****************************
+
+# *************ROTAS DE CARGO****************************
 @app.route('/cargos', methods=['POST'])
 def cadastrar_cargo():
     id = request.json['id']
@@ -680,3 +697,5 @@ def listar_cargos():
             'id': cargo.id
         })
     return jsonify(lista_cargos)
+
+# *************ROTAS DE CARGO****************************
