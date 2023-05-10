@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Date, ForeignKey, create_engine
-from sqlalchemy.orm import mapped_column, Mapped, Session
+from sqlalchemy.orm import Mapped, Session
 from sqlalchemy_utils import JSONType
 
 import jwt
