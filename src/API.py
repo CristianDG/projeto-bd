@@ -39,7 +39,7 @@ class Usuario(db.Model):
     nome = db.Column(db.String())
     senha = db.Column(db.String())
     permissao_moderador = db.Column(db.Boolean)
-    id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('associacao_criticos.id'), nullable=False)
+    id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('associacao_criticos.id'), nullable=True)
     ultimo_acesso = db.Column(Date, default= dt.now())
 
 
