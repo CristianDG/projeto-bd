@@ -159,8 +159,8 @@ class Staff(db.Model):
 class Cargo(db.Model):
     id = db.Column(db.String(), primary_key="True")
 
-    def __init__(self):
-        pass
+    def __init__(self, id):
+        self.id = id
 
 
 
@@ -692,7 +692,7 @@ def listar_staffs():
 @app.route('/cargos', methods=['POST'])
 def cadastrar_cargo():
     id = request.json['nome']
-    novo_cargo = Cargo(id=id)
+    novo_cargo = Cargo(id)
     db.session.add(novo_cargo)
     db.session.commit()
     return jsonify({'nome': novo_cargo.id})
