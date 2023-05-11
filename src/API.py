@@ -16,7 +16,7 @@ from hashlib import sha256
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:teste123@ projetobd-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com:5432/projeto_bd_caju"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:teste123@projetobd-caju.cgsu9rzobayk.us-east-1.rds.amazonaws.com/banco_caju"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
