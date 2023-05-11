@@ -103,7 +103,8 @@ class Filme(db.Model):
     id = db.Column(db.Integer, db.ForeignKey('obra.id'), primary_key=True)
     bilheteria = db.Column(db.Integer)
     
-    def __init__(self, bilheteria):
+    def __init__(self, id_obra, bilheteria):
+        self.id = id_obra
         self.bilheteria = bilheteria
 
 class Serie(db.Model):
@@ -111,7 +112,8 @@ class Serie(db.Model):
     data_fim = db.Column(Date)
     episodios = db.Column(db.Integer)
 
-    def __init__(self, data, ep):
+    def __init__(self, id, data, ep):
+        self.id = id
         self.data_fim = data
         self.episodios = ep
 
