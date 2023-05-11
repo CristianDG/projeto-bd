@@ -258,7 +258,7 @@ def listar_usuarios():
 def cadastrar_usuario():
     user = Usuario(
         request.json['nome'],
-        request.json['senha'],
+        criptografar(request.json['senha']),
         request.json['permissao_moderador'],
         request.json['id_associacao_criticos']
     )
