@@ -40,7 +40,6 @@ class Usuario(db.Model):
     senha = db.Column(db.String())
     permissao_moderador = db.Column(db.Boolean)
     id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('associacao_criticos.id'), nullable=True)
-    ultimo_acesso = db.Column(Date, default= dt.now())
 
 
     def __init__(self, nome, senha, permissao_mod, id_associacao_critos):
@@ -161,15 +160,15 @@ class Cargo(db.Model):
 
 
 def encode(dados):
-    return jwt.encode(dados, os.getenv('JWT_SECRET'), algorithm='HS256')
+    return jwt.encode(dados, 'segredo shhh...', algorithm='HS256')
 
 def decode(dados):
-    return jwt.decode(dados, os.getenv('JWT_SECRET'), algorithms=["HS256"])
+    return jwt.decode(dados, 'segredo shhh...', algorithms=["HS256"])
 
 def criptografar(senha):
     return sha256(bytes(senha ,'utf8')).hexdigest()
 
-def autenticar(usuario=False, moderador=False):
+def autenticar(usuario=False, moderador=False, passar_usuario=False):
 
     def wrapper(fn):
         @wraps(fn)
@@ -191,23 +190,24 @@ def autenticar(usuario=False, moderador=False):
             data_token = dt.fromtimestamp(token['data'])
             agora = dt.now()
 
+
             # TODO: controlar a data do token com a data do último acesso
             if (agora - data_token) > ttl_token:
                 return {'error': 'token expirado'}, 403
 
-
             # TODO: pegar o usuario pelo id
-            #usuario = UsuarioController.procurar_por_id(id_usuario)
-            user = None
+            user = Usuario.query.get(id_usuario)
             if not user:
                 return erro
 
 
             # FIXME mudar
-            if (moderador and not user.admin) and (moderador and user.admin):
+            if (moderador and not user.permissao_moderador) and (moderador and user.permissao_moderador):
                 return erro
 
-            return fn(*args, **kwargs, usuario_solicitante=usuario)
+            if passar_usuario:
+                return fn(*args, **kwargs, usuario_solicitante=user)
+            return fn(*args, **kwargs)
 
         return inner
     return wrapper
@@ -217,15 +217,19 @@ def login():
     usuario_json = request.get_json()
 
     # TODO: pegar o usuario do banco
-    #usuario = UsuarioController.procurar_por_login(usuario_json['email'], criptografar(usuario_json['senha']))
-    usuario = None
+    usuario = db.session.execute(
+        db.select(Usuario)
+        .where(Usuario.nome == usuario_json.get('nome') and Usuario.senha == usuario_json.get('senha'))
+        .limit(1)
+        ).scalar_one()
+
     if not usuario:
         return {'error': 'email ou senha incorretos'}, 400
 
-    # TODO: mudar o ultimo acesso e retornar no lugar da data de agora
-    token = encode({'id': usuario.id, 'data': dt.now().timestamp()})
+    now = dt.now()
+    token = encode({'id': usuario.id, 'data': now.timestamp()})
 
-    return { 'token': token, 'adm': usuario.admin }, 200
+    return { 'token': token }, 200
 
 # Rotas da API
 
@@ -243,6 +247,7 @@ def listar_usuarios():
     )
 
 @app.route('/usuarios', methods=['POST'])
+@autenticar(moderador=True)
 def cadastrar_usuario():
     user = Usuario(
         request.json['nome'],
@@ -252,14 +257,12 @@ def cadastrar_usuario():
     )
     db.session.add(user)
     db.session.commit()
-    return jsonify(
-        [{
-            'id':user.id,
-            'nome':user.nome,
-            'permissão_moderador':user.permissao_moderador,
-            'associação_criticos':user.id_associacao_criticos
-        }]
-    )
+    return jsonify({
+        'id':user.id,
+        'nome':user.nome,
+        'permissão_moderador':user.permissao_moderador,
+        'associação_criticos':user.id_associacao_criticos
+    })
 
 
 @app.route('/usuarios/<int:usuario_id>', methods=['GET'])
