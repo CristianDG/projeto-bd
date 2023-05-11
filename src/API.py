@@ -216,7 +216,6 @@ def autenticar(usuario=False, moderador=False, passar_usuario=False):
 
 @app.errorhandler(Exception)
 def handle_bad_request(e):
-    raise e
     print(e)
     return {'error': 'erro interno do servidor'}, 500
 
