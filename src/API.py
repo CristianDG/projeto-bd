@@ -57,12 +57,14 @@ class Critica(db.Model):
     nota = db.Column(db.Float)
     data = db.Column(Date)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id'))
+    id_obra = db.Column(db.Integer, db.ForeignKey('obra.id'))
 
-    def __init__(self, conteudo, nota, data, id_usuario):
+    def __init__(self, conteudo, nota, data, id_usuario, id_obra):
         self.conteudo = conteudo
         self.nota = nota
         self.data = data
         self.id_usuario = id_usuario
+        self.id_obra = id_obra
 
 class Obra(db.Model):
     __tablename__ = "obra"
@@ -75,12 +77,13 @@ class Obra(db.Model):
     data_estreia = db.Column(Date)
 
 
-    def __init__(self, nome, id_prod, genero, sinopse, data_estreia, relacionados):
+    def __init__(self, nome, id_prod, genero, sinopse, data_estreia, tipo):
         self.nome = nome
         self.id_produtora = id_prod
         self.genero = genero
         self.sinopse = sinopse
         self.data_estreia = data_estreia
+        self.tipo = tipo
     
 
 class Criticas_Obras(db.Model):
@@ -93,8 +96,8 @@ class Criticas_Obras(db.Model):
 
 class Genero(db.Model):
     id = db.Column(db.String(), primary_key=True)
-    def __init__(self):
-        pass
+    def __init__(self, id):
+        self.id = id
 
 class Filme(db.Model):
     id = db.Column(db.Integer, db.ForeignKey('obra.id'), primary_key=True)
@@ -140,14 +143,14 @@ class Staff(db.Model):
     nome_artístico = db.Column(db.String())
     nome = db.Column(db.String())
     data_nascimento = db.Column(Date)
-    foto = db.Column(db.LargeBinary())
+    #foto = db.Column(db.LargeBinary())
     local_nascimento = db.Column(db.String())
 
-    def __init__(self, nome, nome_art, data_nasc, foto, local_nasc):
+    def __init__(self, nome, nome_art, data_nasc, local_nasc):
         self.nome = nome
-        self.nome_artístico = nome_art
+        self.nome_artistico = nome_art
         self.data_nascimento = data_nasc
-        self.foto = foto
+        #self.foto = foto
         self.local_nascimento = local_nasc
     
 
@@ -211,6 +214,7 @@ def autenticar(usuario=False, moderador=False, passar_usuario=False):
 
 @app.errorhandler(Exception)
 def handle_bad_request(e):
+    raise e
     print(e)
     return {'error': 'erro interno do servidor'}, 500
 
@@ -316,9 +320,9 @@ def listar_assoc_criticos():
     assoc_crits = Associacao_Criticos.query.all()
     return jsonify(
         [{
-            'id': assoc_crits.id,
-            'nome': assoc_crits.nome
-        }]
+            'id': assoc_critic.id,
+            'nome': assoc_critic.nome
+        } for assoc_critic in assoc_crits]
     )
 
 @app.route('/associacao_criticos', methods=['POST'])
@@ -337,27 +341,26 @@ def cadastrar_assoc_criticos():
 @app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['GET'])
 def buscar_assoc_crit(assoc_crit_id):
     assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
-    if assoc_crit:
-        return jsonify(
-            [{
-                'id': assoc_crit.id,
-                'nome': assoc_crit.nome
-            }]
-        )
+    if not assoc_crit:
+        return jsonify({'mensagem': 'Associação de críticos não encontrada'}), 404
+
+    return jsonify({
+        'id': assoc_crit.id,
+        'nome': assoc_crit.nome
+    })
 
 
 @app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['PUT'])
 def atualizar_assoc_crit(assoc_crit_id):
     assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
-    if assoc_crit:
-        assoc_crit.nome = request.json.get('nome', assoc_crit.nome)
-        db.session.commit()
-        return jsonify(
-            [{
-                'id': assoc_crit.id,
-                'nome': assoc_crit.nome
-            }]
-        )
+    if not assoc_crit:
+        return jsonify({'mensagem': 'Associação de críticos não encontrada'}), 404
+    assoc_crit.nome = request.json.get('nome', assoc_crit.nome)
+    db.session.commit()
+    return jsonify({
+        'id': assoc_crit.id,
+        'nome': assoc_crit.nome
+    })
 
 
 @app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['DELETE'])
@@ -394,7 +397,13 @@ def listar_criticas_filme(obra_id):
 
 @app.route('/criticas', methods=['POST'])
 def cadastrar_critica():
-    crit = Critica(request.json['conteudo'], request.json['nota'], request.json['data'], request.json['id_usuario'], request.json['id_obra'])
+    crit = Critica(
+        request.json['conteudo'],
+        request.json['nota'],
+        dt.now(),
+        request.json['id_usuario'],
+        request.json['id_obra'])
+
     db.session.add(crit)
     db.session.commit()
     return jsonify(
@@ -480,13 +489,29 @@ def listar_obras():
         }for obra in obras]
     )
 
+@app.route('/produtoras', methods=['POST'])
+def cadastrar_produtora():
+    prod = Produtora(request.json['nome'])
+
+    db.session.add(prod)
+    db.session.commit()
+    return jsonify({
+        'id': prod.id,
+        'nome': prod.nome
+    })
 
 @app.route('/obras', methods=['POST'])
 def cadastrar_obra():
     tipo = request.json['tipo'].upper()
     if tipo not in ['F', 'S']:
         return jsonify({'error': 'Tipo de obra inválido.'}), 400
-    obra = Obra(request.json['nome'], request.json['sinopse'], request.json['genero'], request.json['id_prod'], request.json['data_estreia'], tipo)
+    obra = Obra(
+        nome=request.json['nome'],
+        sinopse=request.json['sinopse'],
+        genero=request.json['genero'],
+        id_prod=request.json['id_prod'],
+        data_estreia=dt.fromtimestamp(request.json['data_estreia']),
+        tipo=tipo)
     db.session.add(obra)
     db.session.commit()
     if tipo == 'F':
@@ -569,11 +594,12 @@ def cadastrar_genero():
     db.session.commit()
     return jsonify(
         {
-            'id': genero.id
+            'nome': genero.id
         }
     )
 
 @app.route('/generos/<int:genero_id>', methods=['DELETE'])
+@autenticar(moderador=True)
 def excluir_genero(genero_id):
     genero = Genero.query.get(genero_id)
     if genero:
@@ -589,7 +615,7 @@ def buscar_genero(genero_id):
     if genero:
         return jsonify(
             {
-                'id': genero.id
+                'nome': genero.id
             }
         )
     else:
@@ -600,7 +626,7 @@ def listar_generos():
     generos = Genero.query.all()
     lista_generos = []
     for genero in generos:
-        lista_generos.append({'id': genero.id})
+        lista_generos.append({'nome': genero.id})
     return jsonify(lista_generos)
 
 # *************ROTAS DE GENERO****************************
@@ -611,10 +637,10 @@ def cadastrar_staff():
     nome = request.json['nome']
     nome_artistico = request.json['nome_artistico']
     data_nascimento = dt.strptime(request.json['data_nascimento'], '%Y-%m-%d').date()
-    foto = request.json['foto']
+    #foto = request.json['foto']
     local_nascimento = request.json['local_nascimento']
 
-    novo_staff = Staff(nome=nome, nome_artístico=nome_artistico, data_nascimento=data_nascimento, foto=foto, local_nascimento=local_nascimento)
+    novo_staff = Staff(nome, nome_artistico, data_nascimento, local_nascimento)
     db.session.add(novo_staff)
     db.session.commit()
 
@@ -663,11 +689,11 @@ def listar_staffs():
 # *************ROTAS DE CARGO****************************
 @app.route('/cargos', methods=['POST'])
 def cadastrar_cargo():
-    id = request.json['id']
+    id = request.json['nome']
     novo_cargo = Cargo(id=id)
     db.session.add(novo_cargo)
     db.session.commit()
-    return jsonify({'id': novo_cargo.id})
+    return jsonify({'nome': novo_cargo.id})
 
 @app.route('/cargos', methods=['GET'])
 def listar_cargos():
@@ -675,7 +701,7 @@ def listar_cargos():
     lista_cargos = []
     for cargo in cargos:
         lista_cargos.append({
-            'id': cargo.id
+            'nome': cargo.id
         })
     return jsonify(lista_cargos)
 
