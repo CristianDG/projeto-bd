@@ -414,7 +414,6 @@ def cadastrar_critica():
             'conteudo': crit.conteudo,
             'nota': crit.nota,
             'data': crit.data,
-            'editada': crit.editada,
             'id_usuario': crit.id_usuario
         }
     )
@@ -430,7 +429,6 @@ def buscar_critica(critica_id):
                 'conteudo': crit.conteudo,
                 'nota': crit.nota,
                 'data': crit.data,
-                'editada': crit.editada,
                 'id_usuario': crit.id_usuario
             }
         )
