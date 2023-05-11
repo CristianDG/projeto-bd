@@ -250,7 +250,7 @@ def listar_usuarios():
 
 
 @app.route('/usuarios', methods=['POST'])
-def cadastrar_usuario(moderador):
+def cadastrar_usuario():
     user = Usuario(
         request.json['nome'],
         request.json['senha'],
