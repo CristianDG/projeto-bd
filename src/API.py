@@ -36,17 +36,17 @@ class Associacao_Criticos(db.Model):
 class Usuario(db.Model):
     __tablename__ = "usuario"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String())
+    nome = db.Column(db.String(), unique=True)
     senha = db.Column(db.String())
     permissao_moderador = db.Column(db.Boolean)
     id_associacao_criticos = db.Column(db.Integer, db.ForeignKey('associacao_criticos.id'), nullable=True)
 
 
-    def __init__(self, nome, senha, permissao_mod, id_associacao_critos):
+    def __init__(self, nome, senha, permissao_mod, id_associacao_criticos):
         self.nome = nome
         self.senha = senha
         self.permissao_moderador = permissao_mod
-        self.id_associacao_criticos = id_associacao_critos
+        self.id_associacao_criticos = id_associacao_criticos
 
 
 
@@ -175,10 +175,11 @@ def autenticar(usuario=False, moderador=False, passar_usuario=False):
         def inner(*args, **kwargs):
             erro = { 'error': 'não autorizado' }, 401
 
-            if 'Authorization' not in request.headers:
+            if ('Authorization' not in request.headers or
+                len(request.headers['Authorization'].split()) != 2):
                 return erro
 
-            token = decode(request.headers['Authorization'])
+            token = decode(request.headers['Authorization'].split()[1])
             id_usuario = None
             try:
                 id_usuario = int(token['id'])
@@ -191,17 +192,13 @@ def autenticar(usuario=False, moderador=False, passar_usuario=False):
             agora = dt.now()
 
 
-            # TODO: controlar a data do token com a data do último acesso
             if (agora - data_token) > ttl_token:
                 return {'error': 'token expirado'}, 403
 
-            # TODO: pegar o usuario pelo id
             user = Usuario.query.get(id_usuario)
             if not user:
                 return erro
 
-
-            # FIXME mudar
             if (moderador and not user.permissao_moderador) and (moderador and user.permissao_moderador):
                 return erro
 
@@ -212,15 +209,19 @@ def autenticar(usuario=False, moderador=False, passar_usuario=False):
         return inner
     return wrapper
 
+@app.errorhandler(Exception)
+def handle_bad_request(e):
+    print(e)
+    return {'error': 'erro interno do servidor'}, 500
+
 @app.post('/login')
 def login():
     usuario_json = request.get_json()
 
-    # TODO: pegar o usuario do banco
     usuario = db.session.execute(
         db.select(Usuario)
-        .where(Usuario.nome == usuario_json.get('nome') and Usuario.senha == usuario_json.get('senha'))
-        .limit(1)
+        .where(Usuario.nome == usuario_json.get('nome') and
+               Usuario.senha == criptografar(usuario_json.get('senha')))
         ).scalar_one()
 
     if not usuario:
@@ -246,9 +247,10 @@ def listar_usuarios():
         }for usuario in usuarios]
     )
 
+
+
 @app.route('/usuarios', methods=['POST'])
-@autenticar(moderador=True)
-def cadastrar_usuario():
+def cadastrar_usuario(moderador):
     user = Usuario(
         request.json['nome'],
         request.json['senha'],
@@ -268,52 +270,41 @@ def cadastrar_usuario():
 @app.route('/usuarios/<int:usuario_id>', methods=['GET'])
 def buscar_usuario(usuario_id):
     user = Usuario.query.get(usuario_id)
-    if user:
-        return jsonify(
-            [{
-                'id':user.id,
-                'nome':user.nome,
-                'permissão_moderador':user.permissao_moderador,
-                'associação_criticos':user.id_associacao_criticos
-            }]
-        )
-    else:
+    if not user:
         return jsonify({'mensagem':'Usuario não encontrado.'}), 404
+    return jsonify({
+        'id':user.id,
+        'nome':user.nome,
+        'permissão_moderador':user.permissao_moderador,
+        'associação_criticos':user.id_associacao_criticos
+    })
 
 
 @app.route('/usuarios/<int:usuario_id>', methods=['PUT'])
 def atualizar_usuario(usuario_id):
     user = Usuario.query.get(usuario_id)
-    if user:
-        user.nome = request.json.get('nome', user.nome)
-        db.session.commit()
-        return jsonify(
-            [{
-                'id':user.id,
-                'nome':user.nome,
-                'permissão_moderador':user.permissao_moderador,
-                'associação_criticos':user.id_associacao_criticos
-            }]
-        )
-    else:
+    if not user:
         return jsonify({'mensagem':'Usuario não encontrado.'}), 404
 
+    user.nome = request.json.get('nome', user.nome)
+    db.session.commit()
+    return jsonify({
+        'id':user.id,
+        'nome':user.nome,
+        'permissão_moderador':user.permissao_moderador,
+        'associação_criticos':user.id_associacao_criticos
+    })
 
-@app.route('/usuarios/<int:usuario_id_mod>/<int:usuario_id>', methods=['DELETE'])
-def excluir_usuario(usuario_id_mod, usuario_id):
-    user_mod = Usuario.query.get(usuario_id_mod)
-    if user_mod.permissao_moderador == True:
-        user = Usuario.query.get(usuario_id)
-        if user:
-            db.session.delete(user)
-            db.session.commit()
-            return '', 204
-        else:
-            return jsonify({'mensagem':'Usuario não encontrado.'}), 404
-    elif user_mod.permissao_moderador == False:
-        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
-    else:
-        return jsonify({'mensagem': 'Usuário não encontrado'}), 404
+
+@app.route('/usuarios/<int:usuario_id>', methods=['DELETE'])
+@autenticar(moderador=True)
+def excluir_usuario(usuario_id):
+    user = Usuario.query.get(usuario_id)
+    if not user:
+        return {'mensagem': 'Usuário não encontrado'}, 404
+    db.session.delete(user)
+    db.session.commit()
+    return '', 204
 
 # *************ROTAS DE USUÁRIO****************************
 
@@ -369,22 +360,16 @@ def atualizar_assoc_crit(assoc_crit_id):
         )
 
 
-@app.route('/associacao_criticos/<int:usuario_id_mod>/<int:assoc_crit_id>', methods=['DELETE'])
-def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
-    user_mod = Usuario.query.get(usuario_id_mod)
-    if user_mod.permissao_moderador == True:
-        assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
-        if assoc_crit:
-            db.session.delete(assoc_crit)
-            db.session.commit()
-            return '', 204
-        else:
-            return jsonify({'mensagem':'Associaçao de Críticos não encontrada.'}), 404
+@app.route('/associacao_criticos/<int:assoc_crit_id>', methods=['DELETE'])
+@autenticar(moderador=True)
+def excluir_assoc_crit(assoc_crit_id):
+    assoc_crit = Associacao_Criticos.query.get(assoc_crit_id)
+    if not assoc_crit:
+        return jsonify({'mensagem':'Associaçao de Críticos não encontrada.'}), 404
+    db.session.delete(assoc_crit)
+    db.session.commit()
+    return '', 204
 
-    elif user_mod.permissao_moderador == False:
-        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
-    else:
-        return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
 
 # *************ROTAS DE ASSOCIACAO CRITICOS****************************
 
@@ -393,16 +378,19 @@ def excluir_assoc_crit(usuario_id_mod, assoc_crit_id):
 # *************ROTAS DE CRITICA****************************
 @app.route('/criticas/<int:obra_id>', methods=['GET'])
 def listar_criticas_filme(obra_id):
-    criticas = Critica.query.all()
-    return jsonify(
-        [{
-            'id': critica.id,
-            'conteudo': critica.conteudo,
-            'nota': critica.nota,
-            'data': critica.data,
-            'id_usuario': critica.id_usuario 
-        } for critica in criticas if critica.id_obra == obra_id]
-    )
+
+    critica = db.session.execute(
+        db.select(Critica)
+        .where(Critica.id_obra == id_obra)
+        .limit(1)).scalar_one()
+
+    return jsonify({
+        'id': critica.id,
+        'conteudo': critica.conteudo,
+        'nota': critica.nota,
+        'data': critica.data,
+        'id_usuario': critica.id_usuario
+    })
 
 @app.route('/criticas', methods=['POST'])
 def cadastrar_critica():
@@ -463,21 +451,16 @@ def atualizar_critica(critica_id):
 
 
 
-@app.route('/criticas/<int:user_id_mod>/<int:critica_id>', methods=['DELETE'])
-def excluir_critica(usuario_id_mod, critica_id):
-    user_mod = Usuario.query.get(usuario_id_mod)
-    if user_mod.permissao_moderador == True:
-        crit = Usuario.query.get(critica_id)
-        if crit:
-            db.session.delete(crit)
-            db.session.commit()
-            return '', 204
-        else:
-            return jsonify({'mensagem':'Crítica não encontrado.'}), 404
-    elif user_mod.permissao_moderador == False:
-        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+@app.route('/criticas/<int:critica_id>', methods=['DELETE'])
+@autenticar(moderador=True)
+def excluir_critica(critica_id):
+    crit = Usuario.query.get(critica_id)
+    if crit:
+        db.session.delete(crit)
+        db.session.commit()
+        return '', 204
     else:
-        return jsonify({'mensagem': 'Usuário moderador não encontrado'}), 404
+        return jsonify({'mensagem':'Crítica não encontrado.'}), 404
 
 # *************ROTAS DE CRITICA****************************
 
@@ -515,7 +498,7 @@ def cadastrar_obra():
         db.session(serie)
         db.commit()
     return jsonify(
-        [{
+        {
             'id': obra.id,
             'nome': obra.nome,
             'sinopse': obra.sinopse,
@@ -523,7 +506,7 @@ def cadastrar_obra():
             'id_prod': obra.id_produtora,
             'data_estreia': obra.data_estreia,
             'tipo': obra.tipo
-        }]
+        }
     )
 
 
@@ -563,21 +546,16 @@ def atualizar_obra(obra_id):
     else:
         return jsonify({'mensagem':'Obra não encontrada.'}), 404
 
-@app.route('/obras/<int:usuario_id_mod>/<int:obra_id>', methods=['DELETE'])
-def excluir_obra(usuario_id_mod, obra_id):
-    user_mod = Usuario.query.get(usuario_id_mod)
-    if user_mod.permissao_moderador == True:
-        obra = Usuario.query.get(obra_id)
-        if obra:
-            db.session.delete(obra)
-            db.session.commit()
-            return '', 204
-        else:
-            return jsonify({'mensagem':'Usuario não encontrado.'}), 404
-    elif user_mod.permissao_moderador == False:
-        return jsonify({'mensagem':'Usuário não possui permissão para moderação.'}), 403
+@app.route('/obras/<int:obra_id>', methods=['DELETE'])
+@autenticar(moderador=True)
+def excluir_obra(obra_id):
+    obra = Usuario.query.get(obra_id)
+    if obra:
+        db.session.delete(obra)
+        db.session.commit()
+        return '', 204
     else:
-        return jsonify({'mensagem': 'Usuário não encontrado'}), 404
+        return jsonify({'mensagem':'Obra não encontrada.'}), 404
 
 # *************ROTAS DE OBRA****************************
 
@@ -586,7 +564,7 @@ def excluir_obra(usuario_id_mod, obra_id):
 # *************ROTAS DE GENERO****************************
 @app.route('/generos', methods=['POST'])
 def cadastrar_genero():
-    genero = Genero(id=request.json['id'])
+    genero = Genero(id=request.json['nome'])
     db.session.add(genero)
     db.session.commit()
     return jsonify(
